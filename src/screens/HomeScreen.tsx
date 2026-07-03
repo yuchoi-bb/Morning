@@ -49,10 +49,13 @@ export default function HomeScreen() {
     const text = event.results[0]?.transcript ?? '';
     transcriptRef.current = text;
     setTranscript(text);
+    if (/종료\s*$/.test(text.trim())) {
+      ExpoSpeechRecognitionModule.stop();
+    }
   });
   useSpeechRecognitionEvent('end', () => {
     setRecognizing(false);
-    const text = transcriptRef.current;
+    const text = transcriptRef.current.replace(/종료\s*$/, '').trim();
     if (!text) return;
 
     const { time, tasks } = parseMorningSentence(text);
@@ -95,7 +98,17 @@ export default function HomeScreen() {
     }
     transcriptRef.current = '';
     setTranscript('');
-    ExpoSpeechRecognitionModule.start({ lang: 'ko-KR', interimResults: true, continuous: false });
+    ExpoSpeechRecognitionModule.start({
+      lang: 'ko-KR',
+      interimResults: true,
+      continuous: false,
+      androidIntentOptions: {
+        // Give pauses between words/tasks more room before auto-stopping.
+        EXTRA_SPEECH_INPUT_COMPLETE_SILENCE_LENGTH_MILLIS: 5000,
+        EXTRA_SPEECH_INPUT_POSSIBLY_COMPLETE_SILENCE_LENGTH_MILLIS: 5000,
+        EXTRA_SPEECH_INPUT_MINIMUM_LENGTH_MILLIS: 15000,
+      },
+    });
   };
 
   const handleManualAdd = () => {
@@ -185,7 +198,8 @@ export default function HomeScreen() {
               </Text>
             </Pressable>
             <Text style={styles.hint}>
-              예: "아침 7시 반에 이불정리하고 아침먹고 강아지 산책시키기"
+              예: "아침 7시 반에 이불정리하고 아침먹고 강아지 산책시키기"{'\n'}
+              (말이 끝나면 "종료"라고 말하거나 5초간 멈추면 자동으로 끝나요)
             </Text>
             {transcript ? <Text style={styles.transcript}>인식된 문장: {transcript}</Text> : null}
 

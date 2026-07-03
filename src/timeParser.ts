@@ -102,6 +102,10 @@ export function parseSpokenTime(raw: string): ParsedTime | null {
 const TRAILING_INSTRUCTION_REGEX =
   /(알람\s*)?(맞춰줘|맞춰|설정해줘|설정해줄래|설정해|해줘|해주라|해주세요|부탁해|부탁드려요|챙겨줘|챙겨주라|알려줘)\s*$/;
 
+// A whole clause that's just "set the alarm" (e.g. "아침에 알람을 맞춰주고") isn't a
+// task — it's an instruction the app already fulfills by scheduling the alarm.
+const ALARM_INSTRUCTION_CLAUSE_REGEX = /알람.*?(맞춰|맞추|설정)/;
+
 const STRONG_CONNECTOR_REGEX = /\s*(,|그리고\s*또|그리고|그\s*다음에?|이랑|랑\s|와\s|과\s|및|·|\/)\s*/g;
 
 function splitTasks(text: string): string[] {
@@ -113,13 +117,11 @@ function splitTasks(text: string): string[] {
   const rawTasks = chunks.flatMap((chunk) => chunk.split(/(?<=고)\s+/));
 
   const cleaned = rawTasks
-    .map((task) =>
-      task
-        .trim()
-        .replace(/^에\s*/, '')
-        .replace(/고$/, '')
-        .trim()
-    )
+    .map((task) => task.trim().replace(/^에\s*/, ''))
+    .filter((task) => task && !ALARM_INSTRUCTION_CLAUSE_REGEX.test(task))
+    // Turn the spoken connective ending ("먹고", "챙기고") into a clean,
+    // nominalized task label ("먹기", "챙기기") instead of leaving it dangling.
+    .map((task) => task.replace(/고$/, '기').trim())
     .filter(Boolean);
 
   // Drop duplicates that show up within the same sentence.
