@@ -110,10 +110,27 @@ function splitTasks(text: string): string[] {
 
   const chunks = withoutInstruction.replace(STRONG_CONNECTOR_REGEX, '|||').split('|||');
 
-  return chunks
-    .flatMap((chunk) => chunk.split(/(?<=고)\s+/))
-    .map((task) => task.trim().replace(/^에\s*/, ''))
+  const rawTasks = chunks.flatMap((chunk) => chunk.split(/(?<=고)\s+/));
+
+  const cleaned = rawTasks
+    .map((task) =>
+      task
+        .trim()
+        .replace(/^에\s*/, '')
+        .replace(/고$/, '')
+        .trim()
+    )
     .filter(Boolean);
+
+  // Drop duplicates that show up within the same sentence.
+  const seen = new Set<string>();
+  const deduped: string[] = [];
+  for (const task of cleaned) {
+    if (seen.has(task)) continue;
+    seen.add(task);
+    deduped.push(task);
+  }
+  return deduped;
 }
 
 export interface MorningSentenceResult {

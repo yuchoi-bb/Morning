@@ -44,24 +44,34 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   const addTodo = useCallback((text: string) => {
     const trimmed = text.trim();
     if (!trimmed) return;
-    setTodos((prev) => [
-      ...prev,
-      { id: `${Date.now()}`, text: trimmed, done: false, createdAt: Date.now() },
-    ]);
+    setTodos((prev) => {
+      if (prev.some((t) => t.text === trimmed)) return prev;
+      return [...prev, { id: `${Date.now()}`, text: trimmed, done: false, createdAt: Date.now() }];
+    });
   }, []);
 
   const addTodos = useCallback((texts: string[]) => {
     const trimmed = texts.map((t) => t.trim()).filter(Boolean);
     if (trimmed.length === 0) return;
-    setTodos((prev) => [
-      ...prev,
-      ...trimmed.map((text, i) => ({
-        id: `${Date.now()}-${i}`,
-        text,
-        done: false,
-        createdAt: Date.now() + i,
-      })),
-    ]);
+    setTodos((prev) => {
+      const existing = new Set(prev.map((t) => t.text));
+      const toAdd: string[] = [];
+      for (const text of trimmed) {
+        if (existing.has(text)) continue;
+        existing.add(text);
+        toAdd.push(text);
+      }
+      if (toAdd.length === 0) return prev;
+      return [
+        ...prev,
+        ...toAdd.map((text, i) => ({
+          id: `${Date.now()}-${i}`,
+          text,
+          done: false,
+          createdAt: Date.now() + i,
+        })),
+      ];
+    });
   }, []);
 
   const toggleTodo = useCallback((id: string) => {
