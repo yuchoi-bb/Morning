@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { ActivityIndicator, Alert, Pressable, StyleSheet, Text, View } from 'react-native';
+import { theme } from '../theme';
 import { checkForUpdate, downloadAndInstall, UpdateInfo } from '../updateChecker';
 
 type Status = 'idle' | 'checking' | 'available' | 'downloading' | 'error';
@@ -48,7 +49,7 @@ export default function UpdateBanner() {
     <View style={styles.banner}>
       {status === 'downloading' ? (
         <View style={styles.row}>
-          <ActivityIndicator color="#fff" />
+          <ActivityIndicator color={theme.text} />
           <Text style={styles.text}>다운로드 중… {Math.round(progress * 100)}%</Text>
         </View>
       ) : (
@@ -65,7 +66,7 @@ export default function UpdateBanner() {
 
 const styles = StyleSheet.create({
   banner: {
-    backgroundColor: '#4F46E5',
+    backgroundColor: theme.accentStrong,
     paddingVertical: 10,
     paddingHorizontal: 16,
   },
@@ -75,12 +76,12 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     gap: 12,
   },
-  text: { color: '#fff', fontSize: 13, flexShrink: 1 },
+  text: { color: theme.text, fontSize: 13, flexShrink: 1 },
   button: {
     backgroundColor: 'rgba(255,255,255,0.2)',
     borderRadius: 8,
     paddingHorizontal: 12,
     paddingVertical: 6,
   },
-  buttonText: { color: '#fff', fontWeight: '700', fontSize: 13 },
+  buttonText: { color: theme.text, fontWeight: '700', fontSize: 13 },
 });

@@ -3,6 +3,11 @@ export interface ParsedTime {
   minute: number; // 0-59
 }
 
+interface TimeSpanMatch extends ParsedTime {
+  start: number;
+  end: number;
+}
+
 const NATIVE_HOUR_WORDS: Record<string, number> = {
   열두: 12,
   열한: 11,
@@ -31,6 +36,17 @@ const SINO_DIGIT_WORDS: Record<string, number> = {
   구: 9,
 };
 
+// Longest-first so "열두"/"열한" match before the shorter "열".
+const NATIVE_HOUR_ALTERNATION = Object.keys(NATIVE_HOUR_WORDS)
+  .sort((a, b) => b.length - a.length)
+  .join('|');
+
+const TIME_REGEX = new RegExp(
+  `(오전|오후|아침|저녁|밤|새벽)?\\s*(?:(\\d{1,2})|(${NATIVE_HOUR_ALTERNATION}))\\s*시` +
+    `\\s*(?:(?:(\\d{1,2})|([일이삼사오육칠팔구십]+))\\s*분|(반))?` +
+    `\\s*(에는|에|쯤)?`
+);
+
 function sinoNumberToInt(text: string): number | null {
   if (text === '십') return 10;
   const match = text.match(/^([일이삼사오육])?십([일이삼사오육칠팔구])?$/);
@@ -44,55 +60,79 @@ function sinoNumberToInt(text: string): number | null {
 }
 
 /**
- * Parses a spoken/typed Korean time phrase like "아침 7시 30분", "일곱시 반",
- * "오후 8시" into an { hour, minute } pair. Returns null if it can't find a time.
+ * Finds the first spoken/typed Korean time phrase in `text` (e.g. "아침 7시 30분",
+ * "일곱시 반", "오후 8시") and returns its value along with the exact character
+ * span it occupies, so callers can cut it out of a larger sentence. Returns
+ * null if no time phrase is found.
  */
-export function parseSpokenTime(raw: string): ParsedTime | null {
-  let text = raw.trim();
+export function extractTimeSpan(text: string): TimeSpanMatch | null {
+  const match = TIME_REGEX.exec(text);
+  if (!match) return null;
 
-  let isPM: boolean | null = null;
-  if (/오전|아침|새벽/.test(text)) isPM = false;
-  if (/오후|저녁|밤/.test(text)) isPM = true;
-  text = text.replace(/오전|오후|아침|저녁|밤|새벽/g, '').trim();
+  const [, period, digitHour, nativeHour, digitMinute, sinoMinute, half] = match;
 
-  let hour: number | null = null;
-
-  const digitHourMatch = text.match(/(\d{1,2})\s*시/);
-  if (digitHourMatch) {
-    hour = parseInt(digitHourMatch[1], 10);
-  } else {
-    for (const word of Object.keys(NATIVE_HOUR_WORDS)) {
-      if (text.includes(`${word}시`)) {
-        hour = NATIVE_HOUR_WORDS[word];
-        break;
-      }
-    }
-  }
-
-  if (hour === null || Number.isNaN(hour)) return null;
+  let hour = digitHour !== undefined ? parseInt(digitHour, 10) : NATIVE_HOUR_WORDS[nativeHour];
+  if (hour === undefined || Number.isNaN(hour)) return null;
 
   let minute = 0;
-  if (/반/.test(text)) {
+  if (half) {
     minute = 30;
+  } else if (digitMinute !== undefined) {
+    minute = parseInt(digitMinute, 10);
+  } else if (sinoMinute !== undefined) {
+    minute = sinoNumberToInt(sinoMinute) ?? 0;
   }
 
-  const digitMinMatch = text.match(/(\d{1,2})\s*분/);
-  if (digitMinMatch) {
-    minute = parseInt(digitMinMatch[1], 10);
-  } else {
-    const sinoMinMatch = text.match(/([일이삼사오육칠팔구십]+)\s*분/);
-    if (sinoMinMatch) {
-      const val = sinoNumberToInt(sinoMinMatch[1]);
-      if (val !== null) minute = val;
-    }
+  if (period === '오후' || period === '저녁' || period === '밤') {
+    if (hour < 12) hour += 12;
+  } else if (period === '오전' || period === '아침' || period === '새벽') {
+    if (hour === 12) hour = 0;
   }
-
-  if (isPM === true && hour < 12) hour += 12;
-  if (isPM === false && hour === 12) hour = 0;
 
   if (hour < 0 || hour > 23 || minute < 0 || minute > 59) return null;
 
-  return { hour, minute };
+  return { hour, minute, start: match.index, end: match.index + match[0].length };
+}
+
+export function parseSpokenTime(raw: string): ParsedTime | null {
+  const found = extractTimeSpan(raw);
+  return found ? { hour: found.hour, minute: found.minute } : null;
+}
+
+const TRAILING_INSTRUCTION_REGEX =
+  /(알람\s*)?(맞춰줘|맞춰|설정해줘|설정해줄래|설정해|해줘|해주라|해주세요|부탁해|부탁드려요|챙겨줘|챙겨주라|알려줘)\s*$/;
+
+const STRONG_CONNECTOR_REGEX = /\s*(,|그리고\s*또|그리고|그\s*다음에?|이랑|랑\s|와\s|과\s|및|·|\/)\s*/g;
+
+function splitTasks(text: string): string[] {
+  const withoutInstruction = text.replace(TRAILING_INSTRUCTION_REGEX, '').trim();
+  if (!withoutInstruction) return [];
+
+  const chunks = withoutInstruction.replace(STRONG_CONNECTOR_REGEX, '|||').split('|||');
+
+  return chunks
+    .flatMap((chunk) => chunk.split(/(?<=고)\s+/))
+    .map((task) => task.trim().replace(/^에\s*/, ''))
+    .filter(Boolean);
+}
+
+export interface MorningSentenceResult {
+  time: ParsedTime | null;
+  tasks: string[];
+}
+
+/**
+ * Parses a single spoken sentence that may contain both an alarm time and a
+ * list of morning tasks, e.g. "아침 7시 반에 이불정리하고 아침먹고 강아지 산책시키기".
+ */
+export function parseMorningSentence(raw: string): MorningSentenceResult {
+  const timeSpan = extractTimeSpan(raw);
+  const rest = timeSpan ? raw.slice(0, timeSpan.start) + raw.slice(timeSpan.end) : raw;
+
+  return {
+    time: timeSpan ? { hour: timeSpan.hour, minute: timeSpan.minute } : null,
+    tasks: splitTasks(rest),
+  };
 }
 
 export function formatTime(hour: number, minute: number): string {

@@ -1,14 +1,14 @@
-import { RouteProp, useNavigation, useRoute } from '@react-navigation/native';
+import { useNavigation } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import React, { useEffect, useRef, useState } from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { useApp } from '../AppContext';
 import { speak, stopSpeaking } from '../speech';
+import { theme } from '../theme';
 import { formatTime } from '../timeParser';
 import { RootStackParamList } from '../types';
 
 type Nav = NativeStackNavigationProp<RootStackParamList>;
-type RingRoute = RouteProp<RootStackParamList, 'AlarmRing'>;
 
 function buildTodoSpeech(pendingTexts: string[]): string {
   if (pendingTexts.length === 0) {
@@ -19,10 +19,8 @@ function buildTodoSpeech(pendingTexts: string[]): string {
 }
 
 export default function AlarmRingScreen() {
-  const { alarms, todos, toggleTodo } = useApp();
+  const { alarm, todos, toggleTodo } = useApp();
   const navigation = useNavigation<Nav>();
-  const route = useRoute<RingRoute>();
-  const alarm = alarms.find((a) => a.id === route.params.alarmId);
 
   const [checkInCount, setCheckInCount] = useState(0);
   const [secondsToNext, setSecondsToNext] = useState<number | null>(null);
@@ -39,11 +37,9 @@ export default function AlarmRingScreen() {
   }, []);
 
   useEffect(() => {
-    const intervalMinutes = alarm?.checkIntervalMinutes ?? 5;
-    const maxCheckIns = alarm?.maxCheckIns ?? 3;
-    const intervalMs = Math.max(1, intervalMinutes) * 60 * 1000;
+    const intervalMs = Math.max(1, alarm.checkIntervalMinutes) * 60 * 1000;
 
-    if (checkInCount >= maxCheckIns) return;
+    if (checkInCount >= alarm.maxCheckIns) return;
     if (pendingTodos.length === 0) return;
 
     let remaining = Math.floor(intervalMs / 1000);
@@ -70,13 +66,13 @@ export default function AlarmRingScreen() {
       if (countdownRef.current) clearInterval(countdownRef.current);
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [checkInCount, alarm?.checkIntervalMinutes, alarm?.maxCheckIns, pendingTodos.length]);
+  }, [checkInCount, alarm.checkIntervalMinutes, alarm.maxCheckIns, pendingTodos.length]);
 
   const handleDismiss = () => {
     stopSpeaking();
     if (timerRef.current) clearInterval(timerRef.current);
     if (countdownRef.current) clearInterval(countdownRef.current);
-    navigation.navigate('Tabs');
+    navigation.navigate('Home');
   };
 
   const formatCountdown = (secs: number | null) => {
@@ -90,8 +86,8 @@ export default function AlarmRingScreen() {
 
   return (
     <View style={styles.container}>
-      <Text style={styles.time}>{alarm ? formatTime(alarm.hour, alarm.minute) : ''}</Text>
-      <Text style={styles.title}>{alarm?.label || '아침 알람'}</Text>
+      <Text style={styles.time}>{formatTime(alarm.hour, alarm.minute)}</Text>
+      <Text style={styles.title}>아침 알람</Text>
 
       <View style={styles.todoBox}>
         {pendingTodos.length === 0 ? (
@@ -125,30 +121,30 @@ export default function AlarmRingScreen() {
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: '#1a1a2e', alignItems: 'center', padding: 24, paddingTop: 80 },
-  time: { fontSize: 48, fontWeight: '800', color: '#fff' },
-  title: { fontSize: 18, color: '#c7c7e0', marginTop: 4, marginBottom: 32 },
-  todoBox: { width: '100%', backgroundColor: '#252547', borderRadius: 16, padding: 20, gap: 12 },
+  container: { flex: 1, backgroundColor: theme.bg, alignItems: 'center', padding: 24, paddingTop: 80 },
+  time: { fontSize: 48, fontWeight: '800', color: theme.text },
+  title: { fontSize: 18, color: theme.subtext, marginTop: 4, marginBottom: 32 },
+  todoBox: { width: '100%', backgroundColor: theme.card, borderRadius: 16, padding: 20, gap: 12 },
   todoRow: { flexDirection: 'row', alignItems: 'center', gap: 10 },
-  checkbox: { width: 18, height: 18, borderRadius: 4, borderWidth: 2, borderColor: '#8b8bd6' },
-  todoText: { color: '#fff', fontSize: 16, flexShrink: 1 },
-  doneText: { color: '#a5f3c0', fontSize: 16, textAlign: 'center' },
-  countdown: { color: '#8b8bd6', marginTop: 20, fontSize: 14 },
+  checkbox: { width: 18, height: 18, borderRadius: 4, borderWidth: 2, borderColor: theme.accent },
+  todoText: { color: theme.text, fontSize: 16, flexShrink: 1 },
+  doneText: { color: theme.success, fontSize: 16, textAlign: 'center' },
+  countdown: { color: theme.accent, marginTop: 20, fontSize: 14 },
   replayButton: {
     marginTop: 36,
     borderWidth: 1,
-    borderColor: '#8b8bd6',
+    borderColor: theme.accent,
     borderRadius: 12,
     paddingVertical: 12,
     paddingHorizontal: 28,
   },
-  replayButtonText: { color: '#c7c7e0', fontSize: 15 },
+  replayButtonText: { color: theme.subtext, fontSize: 15 },
   dismissButton: {
     marginTop: 16,
-    backgroundColor: '#e11d48',
+    backgroundColor: theme.danger,
     borderRadius: 12,
     paddingVertical: 16,
     paddingHorizontal: 48,
   },
-  dismissButtonText: { color: '#fff', fontSize: 17, fontWeight: '700' },
+  dismissButtonText: { color: '#1a1a1a', fontSize: 17, fontWeight: '700' },
 });

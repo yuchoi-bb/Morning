@@ -1,6 +1,6 @@
 import * as Notifications from 'expo-notifications';
 import { Platform } from 'react-native';
-import { Alarm, Todo } from './types';
+import { AlarmSettings, Todo } from './types';
 
 Notifications.setNotificationHandler({
   handleNotification: async () => ({
@@ -32,7 +32,7 @@ export async function ensureNotificationSetup(): Promise<boolean> {
   return status === 'granted';
 }
 
-export async function cancelAlarmNotifications(alarm: Alarm): Promise<void> {
+export async function cancelAlarmNotifications(alarm: AlarmSettings): Promise<void> {
   if (!NOTIFICATIONS_SUPPORTED) return;
   await Promise.all(
     alarm.notificationIds.map((id) => Notifications.cancelScheduledNotificationAsync(id))
@@ -45,17 +45,20 @@ function addMinutesToTime(hour: number, minute: number, minutesToAdd: number) {
   return { hour: Math.floor(wrapped / 60), minute: wrapped % 60 };
 }
 
-export async function scheduleAlarmNotifications(alarm: Alarm, todos: Todo[]): Promise<string[]> {
+export async function scheduleAlarmNotifications(
+  alarm: AlarmSettings,
+  todos: Todo[]
+): Promise<string[]> {
   if (!NOTIFICATIONS_SUPPORTED) return [];
   const ids: string[] = [];
   const pendingCount = todos.filter((t) => !t.done).length;
 
   const mainId = await Notifications.scheduleNotificationAsync({
     content: {
-      title: alarm.label || '아침 알람',
+      title: '아침 알람',
       body: pendingCount > 0 ? `오늘 할일 ${pendingCount}개가 남아있어요!` : '좋은 아침이에요!',
       sound: 'default',
-      data: { alarmId: alarm.id, kind: 'main' },
+      data: { kind: 'main' },
     },
     trigger: {
       type: Notifications.SchedulableTriggerInputTypes.DAILY,
@@ -73,7 +76,7 @@ export async function scheduleAlarmNotifications(alarm: Alarm, todos: Todo[]): P
         title: '아직 안 끝났어요!',
         body: '아침 할일을 확인해보세요.',
         sound: 'default',
-        data: { alarmId: alarm.id, kind: 'checkin', index: i },
+        data: { kind: 'checkin', index: i },
       },
       trigger: {
         type: Notifications.SchedulableTriggerInputTypes.DAILY,

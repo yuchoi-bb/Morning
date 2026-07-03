@@ -1,46 +1,40 @@
-import { NavigationContainer, NavigationContainerRef } from '@react-navigation/native';
-import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
+import { DarkTheme, NavigationContainer, NavigationContainerRef } from '@react-navigation/native';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
+import { StatusBar } from 'expo-status-bar';
 import * as Notifications from 'expo-notifications';
 import React, { useEffect, useRef } from 'react';
 import { View } from 'react-native';
 import { AppProvider } from './src/AppContext';
 import UpdateBanner from './src/components/UpdateBanner';
-import AddAlarmScreen from './src/screens/AddAlarmScreen';
-import AlarmListScreen from './src/screens/AlarmListScreen';
 import AlarmRingScreen from './src/screens/AlarmRingScreen';
-import TodoScreen from './src/screens/TodoScreen';
+import HomeScreen from './src/screens/HomeScreen';
+import { theme } from './src/theme';
 import { RootStackParamList } from './src/types';
 
-const Tab = createBottomTabNavigator();
 const Stack = createNativeStackNavigator<RootStackParamList>();
 
-function Tabs() {
-  return (
-    <Tab.Navigator screenOptions={{ headerTitleAlign: 'center' }}>
-      <Tab.Screen name="할일" component={TodoScreen} />
-      <Tab.Screen name="알람" component={AlarmListScreen} />
-    </Tab.Navigator>
-  );
-}
+const navigationTheme = {
+  ...DarkTheme,
+  colors: {
+    ...DarkTheme.colors,
+    background: theme.bg,
+    card: theme.card,
+    text: theme.text,
+    border: theme.border,
+    primary: theme.accent,
+  },
+};
 
 export default function App() {
   const navigationRef = useRef<NavigationContainerRef<RootStackParamList>>(null);
 
   useEffect(() => {
-    const handleNotification = (data: unknown) => {
-      const alarmId = (data as { alarmId?: string } | undefined)?.alarmId;
-      if (alarmId) {
-        navigationRef.current?.navigate('AlarmRing', { alarmId });
-      }
+    const handleNotification = () => {
+      navigationRef.current?.navigate('AlarmRing');
     };
 
-    const receivedSub = Notifications.addNotificationReceivedListener((notification) => {
-      handleNotification(notification.request.content.data);
-    });
-    const responseSub = Notifications.addNotificationResponseReceivedListener((response) => {
-      handleNotification(response.notification.request.content.data);
-    });
+    const receivedSub = Notifications.addNotificationReceivedListener(handleNotification);
+    const responseSub = Notifications.addNotificationResponseReceivedListener(handleNotification);
 
     return () => {
       receivedSub.remove();
@@ -50,12 +44,12 @@ export default function App() {
 
   return (
     <AppProvider>
-      <View style={{ flex: 1 }}>
+      <View style={{ flex: 1, backgroundColor: theme.bg }}>
+        <StatusBar style="light" />
         <UpdateBanner />
-        <NavigationContainer ref={navigationRef}>
+        <NavigationContainer ref={navigationRef} theme={navigationTheme}>
           <Stack.Navigator>
-            <Stack.Screen name="Tabs" component={Tabs} options={{ headerShown: false }} />
-            <Stack.Screen name="AddAlarm" component={AddAlarmScreen} options={{ title: '알람 추가' }} />
+            <Stack.Screen name="Home" component={HomeScreen} options={{ title: '모닝' }} />
             <Stack.Screen
               name="AlarmRing"
               component={AlarmRingScreen}

@@ -5,11 +5,9 @@ export interface Todo {
   createdAt: number;
 }
 
-export interface Alarm {
-  id: string;
+export interface AlarmSettings {
   hour: number; // 0-23
   minute: number; // 0-59
-  label: string;
   enabled: boolean;
   checkIntervalMinutes: number; // how often to re-prompt after the alarm rings
   maxCheckIns: number; // how many times to re-prompt
@@ -17,7 +15,6 @@ export interface Alarm {
 }
 
 export type RootStackParamList = {
-  Tabs: undefined;
-  AddAlarm: undefined;
-  AlarmRing: { alarmId: string };
+  Home: undefined;
+  AlarmRing: undefined;
 };

@@ -1,8 +1,17 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { Alarm, Todo } from './types';
+import { AlarmSettings, Todo } from './types';
 
 const TODOS_KEY = 'morning:todos';
-const ALARMS_KEY = 'morning:alarms';
+const ALARM_KEY = 'morning:alarm';
+
+export const DEFAULT_ALARM: AlarmSettings = {
+  hour: 7,
+  minute: 0,
+  enabled: false,
+  checkIntervalMinutes: 5,
+  maxCheckIns: 3,
+  notificationIds: [],
+};
 
 export async function loadTodos(): Promise<Todo[]> {
   const raw = await AsyncStorage.getItem(TODOS_KEY);
@@ -13,11 +22,11 @@ export async function saveTodos(todos: Todo[]): Promise<void> {
   await AsyncStorage.setItem(TODOS_KEY, JSON.stringify(todos));
 }
 
-export async function loadAlarms(): Promise<Alarm[]> {
-  const raw = await AsyncStorage.getItem(ALARMS_KEY);
-  return raw ? (JSON.parse(raw) as Alarm[]) : [];
+export async function loadAlarm(): Promise<AlarmSettings> {
+  const raw = await AsyncStorage.getItem(ALARM_KEY);
+  return raw ? { ...DEFAULT_ALARM, ...(JSON.parse(raw) as AlarmSettings) } : DEFAULT_ALARM;
 }
 
-export async function saveAlarms(alarms: Alarm[]): Promise<void> {
-  await AsyncStorage.setItem(ALARMS_KEY, JSON.stringify(alarms));
+export async function saveAlarm(alarm: AlarmSettings): Promise<void> {
+  await AsyncStorage.setItem(ALARM_KEY, JSON.stringify(alarm));
 }
