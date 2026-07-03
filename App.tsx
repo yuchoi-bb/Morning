@@ -3,7 +3,9 @@ import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import * as Notifications from 'expo-notifications';
 import React, { useEffect, useRef } from 'react';
+import { View } from 'react-native';
 import { AppProvider } from './src/AppContext';
+import UpdateBanner from './src/components/UpdateBanner';
 import AddAlarmScreen from './src/screens/AddAlarmScreen';
 import AlarmListScreen from './src/screens/AlarmListScreen';
 import AlarmRingScreen from './src/screens/AlarmRingScreen';
@@ -48,17 +50,20 @@ export default function App() {
 
   return (
     <AppProvider>
-      <NavigationContainer ref={navigationRef}>
-        <Stack.Navigator>
-          <Stack.Screen name="Tabs" component={Tabs} options={{ headerShown: false }} />
-          <Stack.Screen name="AddAlarm" component={AddAlarmScreen} options={{ title: '알람 추가' }} />
-          <Stack.Screen
-            name="AlarmRing"
-            component={AlarmRingScreen}
-            options={{ headerShown: false, gestureEnabled: false }}
-          />
-        </Stack.Navigator>
-      </NavigationContainer>
+      <View style={{ flex: 1 }}>
+        <UpdateBanner />
+        <NavigationContainer ref={navigationRef}>
+          <Stack.Navigator>
+            <Stack.Screen name="Tabs" component={Tabs} options={{ headerShown: false }} />
+            <Stack.Screen name="AddAlarm" component={AddAlarmScreen} options={{ title: '알람 추가' }} />
+            <Stack.Screen
+              name="AlarmRing"
+              component={AlarmRingScreen}
+              options={{ headerShown: false, gestureEnabled: false }}
+            />
+          </Stack.Navigator>
+        </NavigationContainer>
+      </View>
     </AppProvider>
   );
 }
