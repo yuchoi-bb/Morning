@@ -17,6 +17,7 @@ import {
   TextInput,
   View,
 } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useApp } from '../AppContext';
 import Stepper from '../components/Stepper';
 import { theme } from '../theme';
@@ -29,7 +30,6 @@ export default function HomeScreen() {
   const {
     todos,
     alarm,
-    addTodo,
     addTodos,
     toggleTodo,
     removeTodo,
@@ -38,11 +38,24 @@ export default function HomeScreen() {
     setAlarmEnabled,
   } = useApp();
   const navigation = useNavigation<Nav>();
+  const insets = useSafeAreaInsets();
 
   const [manualText, setManualText] = useState('');
   const [recognizing, setRecognizing] = useState(false);
   const [transcript, setTranscript] = useState('');
   const transcriptRef = useRef('');
+
+  // Shared by both voice and typed input, so a full sentence like "8시에
+  // 이불정리하고 아침먹기" sets the alarm time and adds every task either way.
+  const applyParsedInput = (text: string) => {
+    const parsed = parseMorningSentence(text);
+    if (parsed.tasks.length > 0) addTodos(parsed.tasks);
+    if (parsed.time) {
+      updateAlarmTime(parsed.time.hour, parsed.time.minute);
+      if (!alarm.enabled) setAlarmEnabled(true);
+    }
+    return parsed;
+  };
 
   useSpeechRecognitionEvent('start', () => setRecognizing(true));
   useSpeechRecognitionEvent('result', (event) => {
@@ -58,12 +71,7 @@ export default function HomeScreen() {
     const text = transcriptRef.current.replace(/종료\s*$/, '').trim();
     if (!text) return;
 
-    const { time, tasks } = parseMorningSentence(text);
-    if (tasks.length > 0) addTodos(tasks);
-    if (time) {
-      updateAlarmTime(time.hour, time.minute);
-      if (!alarm.enabled) setAlarmEnabled(true);
-    }
+    const { time, tasks } = applyParsedInput(text);
 
     const parts: string[] = [];
     if (time) parts.push(`알람 ${formatTime(time.hour, time.minute)}`);
@@ -113,7 +121,7 @@ export default function HomeScreen() {
 
   const handleManualAdd = () => {
     if (!manualText.trim()) return;
-    addTodo(manualText);
+    applyParsedInput(manualText);
     setManualText('');
   };
 
@@ -208,7 +216,7 @@ export default function HomeScreen() {
         }
         ListEmptyComponent={<Text style={styles.empty}>아직 등록된 아침 할일이 없어요.</Text>}
       />
-      <View style={styles.inputRow}>
+      <View style={[styles.inputRow, { paddingBottom: 16 + insets.bottom }]}>
         <TextInput
           style={styles.input}
           placeholder="할일 직접 입력하기"

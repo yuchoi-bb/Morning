@@ -4,6 +4,7 @@ import { StatusBar } from 'expo-status-bar';
 import * as Notifications from 'expo-notifications';
 import React, { useEffect, useRef } from 'react';
 import { View } from 'react-native';
+import { SafeAreaProvider, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { AppProvider } from './src/AppContext';
 import UpdateBanner from './src/components/UpdateBanner';
 import AlarmRingScreen from './src/screens/AlarmRingScreen';
@@ -25,8 +26,9 @@ const navigationTheme = {
   },
 };
 
-export default function App() {
+function AppContent() {
   const navigationRef = useRef<NavigationContainerRef<RootStackParamList>>(null);
+  const insets = useSafeAreaInsets();
 
   useEffect(() => {
     const handleNotification = () => {
@@ -43,21 +45,29 @@ export default function App() {
   }, []);
 
   return (
-    <AppProvider>
-      <View style={{ flex: 1, backgroundColor: theme.bg }}>
-        <StatusBar style="light" />
-        <UpdateBanner />
-        <NavigationContainer ref={navigationRef} theme={navigationTheme}>
-          <Stack.Navigator>
-            <Stack.Screen name="Home" component={HomeScreen} options={{ title: '모닝' }} />
-            <Stack.Screen
-              name="AlarmRing"
-              component={AlarmRingScreen}
-              options={{ headerShown: false, gestureEnabled: false }}
-            />
-          </Stack.Navigator>
-        </NavigationContainer>
-      </View>
-    </AppProvider>
+    <View style={{ flex: 1, backgroundColor: theme.bg }}>
+      <StatusBar style="light" />
+      <UpdateBanner topInset={insets.top} />
+      <NavigationContainer ref={navigationRef} theme={navigationTheme}>
+        <Stack.Navigator>
+          <Stack.Screen name="Home" component={HomeScreen} options={{ title: '모닝' }} />
+          <Stack.Screen
+            name="AlarmRing"
+            component={AlarmRingScreen}
+            options={{ headerShown: false, gestureEnabled: false }}
+          />
+        </Stack.Navigator>
+      </NavigationContainer>
+    </View>
+  );
+}
+
+export default function App() {
+  return (
+    <SafeAreaProvider>
+      <AppProvider>
+        <AppContent />
+      </AppProvider>
+    </SafeAreaProvider>
   );
 }

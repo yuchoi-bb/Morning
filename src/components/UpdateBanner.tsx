@@ -5,7 +5,7 @@ import { checkForUpdate, downloadAndInstall, UpdateInfo } from '../updateChecker
 
 type Status = 'idle' | 'checking' | 'available' | 'downloading' | 'error';
 
-export default function UpdateBanner() {
+export default function UpdateBanner({ topInset = 0 }: { topInset?: number }) {
   const [status, setStatus] = useState<Status>('idle');
   const [update, setUpdate] = useState<UpdateInfo | null>(null);
   const [progress, setProgress] = useState(0);
@@ -46,7 +46,7 @@ export default function UpdateBanner() {
   };
 
   return (
-    <View style={styles.banner}>
+    <View style={[styles.banner, { paddingTop: 10 + topInset }]}>
       {status === 'downloading' ? (
         <View style={styles.row}>
           <ActivityIndicator color={theme.text} />
